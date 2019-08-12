@@ -1,5 +1,6 @@
 from discord.ext.commands import Bot
 from discord.utils import get
+from discord import ChannelType, Embed
 import requests
 import os
 
@@ -10,11 +11,11 @@ FACEIT_DATA_V4      = "https://open.faceit.com/data/v4/"
 
 # FACEIT Hub IDs
 POWER_PUG_HUB       = "9512ae3b-7322-4821-9eca-6e0db1819b03"
-GENERAL_HUB         = ""
+GENERAL_HUB         = "a67c2ead-9968-4e8b-957b-fb8bc244b302"
 
 # Discord Channel IDs
-POWER_PUG_CHANNEL   = ""
-GENERAL_CHANNEL     = ""
+POWER_PUG_CHANNEL   = 610367175487913984
+GENERAL_CHANNEL     = 0
 
 # Secrets
 DISCORD_TOKEN       = os.environ.get('DISCORD_TOKEN')
@@ -35,38 +36,23 @@ client = Bot(command_prefix=BOT_PREFIX)
 #
 #   Returns None if unsuccessful
 #
-def get_ongoing_matches(discord_channel):
-    if (discord_channel.id == POWER_PUG_CHANNEL):
+def get_ongoing_matches(channel_id):
+    if (channel_id == POWER_PUG_CHANNEL):
         endpoint = FACEIT_DATA_V4 + "hubs/" + POWER_PUG_HUB + "/matches"
-    elif (discord_channel.id == GENERAL_CHANNEL):
+    elif (channel_id == GENERAL_CHANNEL):
         endpoint = FACEIT_DATA_V4 + "hubs/" + GENERAL_HUB + "/matches"
+    else:
+        print("Invalid Channel ID. We shouldn't ever see this.")
+        return None
 
     matches = requests.get(endpoint, params={"type": "ongoing"}, headers=headers)
+
     if (matches.status_code != 200):
-        print("Could not fetch matches from", discord_channel)
+        print("Could not fetch matches from", channel_id)
         print("STATUS", matches.status_code)
         return None
-    return matches.json
+    return matches.json()
 
-"""
--------------------------------------------------------------------------------
-    Server to listen for FACEIT webhooks
--------------------------------------------------------------------------------
-"""
-# On match ready
-
-# 1. Get match ID
-# 2. Get match via match ID
-# 3. Get FACEIT players in match
-# 4. Get FACEIT player -> discord id mapping via db
-# 5. Create 2 voice channels with appropriate roles
-# 6. Create match id to voice channel mapping 
-# 7. Move discord ids to appropriate voice channels
-
-# On match completed or canceled
-
-# 1. Move all players to lobby
-# 2. Delete channel
 
 """
 -------------------------------------------------------------------------------
@@ -97,24 +83,76 @@ async def matches(context):
     channel = context.channel
 
     # If a user dm's the bot, we want to ignore it.
-    if channel.type == 'dm': # TODO
+    if channel.type != ChannelType.text:
         return
 
-    matches = get_ongoing_matches(channel)
-    
+    # Delete message
+    await context.message.delete()
+
+    matches = get_ongoing_matches(channel.id)
+
+    if (len(matches['items']) == 0):
+        await channel.send('There are currently no ongoing matches.', delete_after=20)
+        return
+
     # Check if our GET request succeeded
     if (matches == None):
-        channel.send('I had trouble fetching messages :( Notify staff and try again later.', delete_after=10)
+        await channel.send('I had trouble fetching matches :( Notify staff and try again later.', delete_after=20)
         return
 
-    for item in matches.items:
-        # Send one message per match due to possible message character count limits
-        print ('=============================================')
-        print (faction1.name, 'vs.', faction2.name)
-        print ()
+    for item in matches['items']:
+        teams = item['teams']
+        results = item['results']
+        faction1 = teams['faction1']
+        faction2 = teams['faction2']
+        faction1_score = str(results['score']['faction1'])
+        faction2_score = str(results['score']['faction2'])
+        location = item['voting']['location']['pick'][0]
+        game_map = item['voting']['map']['pick'][0]
+
+        score = Embed(title=faction1['name'] + ' (' + faction1_score + ')' + ' vs. ' + faction2['name'] + ' (' + faction2_score + ')', 
+                        description=location + ' | ' + game_map, 
+                        url=item['faceit_url'])
+        
+        faction1_roster = ''
+        faction2_roster = ''
+        for i in range (5):
+            faction1_roster += faction1['roster'][i]['nickname'] + '\n'
+            faction2_roster += faction2['roster'][i]['nickname'] + '\n'
+
+        score.add_field(name=faction1['name'] + ' (' + faction1_score + ')', value=faction1_roster)
+        score.add_field(name=faction2['name'] + ' (' + faction2_score + ')', value=faction2_roster)
+    
+        await channel.send(embed=score, delete_after=20)
 
     return
 
+# On match ready
+
+# 1. Get match ID
+# 2. Get match via match ID
+# 3. Get FACEIT players in match
+# 4. Get FACEIT player -> discord id mapping via db
+# 5. Create 2 voice channels with appropriate roles
+# 6. Create match id to voice channel mapping 
+# 7. Move discord ids to appropriate voice channels
+
+# On match completed or canceled
+
+# 1. Move all players to lobby
+# 2. Delete channel
+
+@client.event
+async def on_message(message):
+    # Catch FACEIT webhook!
+    if (message.webhook_id):
+        return
+    else:
+        # Don't process bot messages
+        if (message.author.bot):
+            return
+
+        await client.process_commands(message)
 
 """
 -------------------------------------------------------------------------------
