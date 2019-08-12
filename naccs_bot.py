@@ -1,6 +1,7 @@
 from discord.ext.commands import Bot
 from discord.utils import get
 import requests
+import os
 
 BOT_PREFIX = (".")
 
@@ -12,12 +13,13 @@ POWER_PUG_HUB       = "9512ae3b-7322-4821-9eca-6e0db1819b03"
 GENERAL_HUB         = ""
 
 # Discord Channel IDs
-POWER_PUG_CHANNEL   = 
-GENERAL_CHANNEL     = 
+POWER_PUG_CHANNEL   = ""
+GENERAL_CHANNEL     = ""
 
 # Secrets
 DISCORD_TOKEN       = os.environ.get('DISCORD_TOKEN')
-headers             = {"Authorization": "Bearer " + os.environ.get('FACEIT_KEY')}
+FACEIT_KEY          = os.environ.get('FACEIT_KEY')
+headers             = {"Authorization": "Bearer " + str(FACEIT_KEY)}
 
 # Discord Bot
 client = Bot(command_prefix=BOT_PREFIX)
@@ -36,7 +38,7 @@ client = Bot(command_prefix=BOT_PREFIX)
 def get_ongoing_matches(discord_channel):
     if (discord_channel.id == POWER_PUG_CHANNEL):
         endpoint = FACEIT_DATA_V4 + "hubs/" + POWER_PUG_HUB + "/matches"
-    else if (discord_channel.id == GENERAL_CHANNEL):
+    elif (discord_channel.id == GENERAL_CHANNEL):
         endpoint = FACEIT_DATA_V4 + "hubs/" + GENERAL_HUB + "/matches"
 
     matches = requests.get(endpoint, params={"type": "ongoing"}, headers=headers)
