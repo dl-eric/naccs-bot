@@ -102,11 +102,13 @@ async def matches(context):
 
     for item in matches['items']:
         teams = item['teams']
-        results = item['results']
+        # results = item['results']
         faction1 = teams['faction1']
         faction2 = teams['faction2']
-        faction1_score = str(results['score']['faction1'])
-        faction2_score = str(results['score']['faction2'])
+        # faction1_score = str(results['score']['faction1'])
+        # faction2_score = str(results['score']['faction2'])
+        faction1_score = ''
+        faction2_score = ''
         location = item['voting']['location']['pick'][0]
         game_map = item['voting']['map']['pick'][0]
 
@@ -123,7 +125,7 @@ async def matches(context):
         score.add_field(name=faction1['name'] + ' (' + faction1_score + ')', value=faction1_roster)
         score.add_field(name=faction2['name'] + ' (' + faction2_score + ')', value=faction2_roster)
     
-        await channel.send(embed=score, delete_after=20)
+        await channel.send(embed=score, delete_after=30)
 
     return
 
