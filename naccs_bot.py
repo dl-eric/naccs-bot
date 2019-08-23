@@ -3,6 +3,7 @@ from discord.utils import get
 from discord import ChannelType, Embed
 import requests
 import os
+import pymysql
 
 BOT_PREFIX = (".")
 
@@ -25,6 +26,8 @@ headers             = {"Authorization": "Bearer " + str(FACEIT_KEY)}
 # Discord Bot
 client = Bot(command_prefix=BOT_PREFIX)
 
+# Mapping of FACEIT Match ID -> List(Discord Voice Channels)
+channels = {}
 
 """
 -------------------------------------------------------------------------------
@@ -53,6 +56,70 @@ def get_ongoing_matches(channel_id):
         return None
     return matches.json()
 
+
+"""
+-------------------------------------------------------------------------------
+    Discord API Helpers
+-------------------------------------------------------------------------------
+"""
+#
+#
+#   Get powerpug category by going through all categories
+#
+#
+def get_powerpug_category(guild):
+    for category in guild.categories:
+        if category.id == 583601230073298954:
+            return category
+    return None
+
+# On match ready
+
+# 1. Get match ID
+# 2. Get match via match ID
+# 3. Get FACEIT players in match
+# 4. Get FACEIT player -> discord id mapping via db
+# 5. Create 2 voice channels with appropriate roles
+# 6. Create match id to voice channel mapping 
+# 7. Move discord ids to appropriate voice channels
+async def match_ready(message):
+    print("Match ready")
+    guild = message.guild
+    category = get_powerpug_category(guild)
+    # Get match ID
+    match_id = len(channels)
+    print(match_id)
+    channel1 = await guild.create_voice_channel('test_channel1', category=category, user_limit=5)
+    channel2 = await guild.create_voice_channel('test_channel2', category=category, user_limit=5)
+    channels[match_id] = [channel1, channel2]
+    return
+
+# On match completed or canceled
+
+# 1. Get match ID
+# 2. Get appropriate channels from match ID
+# 3. Move everyone to lobby
+# 4. Delete channels
+async def match_finished(message):
+    print("Match finished")
+    global channels
+    lobby_channel = message.guild.get_channel(583601364010270763)
+    match_id = len(channels) - 1
+    print(match_id)
+    to_delete = channels.get(match_id)
+    if to_delete != None:
+        for d in to_delete:
+            members = d.members
+            for member in members:
+                await member.move_to(lobby_channel)
+            await d.delete()
+        channels.pop(match_id)
+    else:
+        print("Error! Couldn't find match", match_id)
+    return
+
+async def match_cancelled(message):
+    return
 
 """
 -------------------------------------------------------------------------------
@@ -129,25 +196,17 @@ async def matches(context):
 
     return
 
-# On match ready
-
-# 1. Get match ID
-# 2. Get match via match ID
-# 3. Get FACEIT players in match
-# 4. Get FACEIT player -> discord id mapping via db
-# 5. Create 2 voice channels with appropriate roles
-# 6. Create match id to voice channel mapping 
-# 7. Move discord ids to appropriate voice channels
-
-# On match completed or canceled
-
-# 1. Move all players to lobby
-# 2. Delete channel
-
 @client.event
 async def on_message(message):
     # Catch FACEIT webhook!
     if (message.webhook_id):
+        if (message.content == "match_status_ready"):
+            await match_ready(message)
+        elif (message.content == "match_status_finished"):
+            await match_finished(message)
+        elif (message.content == "match_status_cancelled"):
+            await match_cancelled(message)
+        await message.delete()
         return
     else:
         # Don't process bot messages
