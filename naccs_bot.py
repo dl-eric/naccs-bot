@@ -4,6 +4,7 @@ from discord import ChannelType, Embed
 import requests
 import os
 import pymysql
+import json
 
 BOT_PREFIX = (".")
 
@@ -82,16 +83,20 @@ def get_powerpug_category(guild):
 # 5. Create 2 voice channels with appropriate roles
 # 6. Create match id to voice channel mapping 
 # 7. Move discord ids to appropriate voice channels
-async def match_ready(message):
+async def match_ready(message, parsed):
     print("Match ready")
     guild = message.guild
     category = get_powerpug_category(guild)
-    # Get match ID
-    match_id = len(channels)
-    print(match_id)
-    channel1 = await guild.create_voice_channel('test_channel1', category=category, user_limit=5)
-    channel2 = await guild.create_voice_channel('test_channel2', category=category, user_limit=5)
-    channels[match_id] = [channel1, channel2]
+    
+    match_id = parsed.get('match_id')
+    channel_list = []
+    for team in parsed.get('teams'):
+        channel = await guild.create_voice_channel(team.get('team_name'), category=category, user_limit=5)
+        for player in team.get('players'):
+            print("Player name:", player)
+        channel_list.append(channel)
+
+    channels[match_id] = channel_list
     return
 
 # On match completed or canceled
@@ -100,12 +105,11 @@ async def match_ready(message):
 # 2. Get appropriate channels from match ID
 # 3. Move everyone to lobby
 # 4. Delete channels
-async def match_finished(message):
+async def match_finished(message, parsed):
     print("Match finished")
     global channels
     lobby_channel = message.guild.get_channel(583601364010270763)
-    match_id = len(channels) - 1
-    print(match_id)
+    match_id = parsed.get('match_id')
     to_delete = channels.get(match_id)
     if to_delete != None:
         for d in to_delete:
@@ -118,7 +122,21 @@ async def match_finished(message):
         print("Error! Couldn't find match", match_id)
     return
 
-async def match_cancelled(message):
+async def match_cancelled(message, parsed):
+    print("Match finished")
+    global channels
+    lobby_channel = message.guild.get_channel(583601364010270763)
+    match_id = parsed.get('match_id')
+    to_delete = channels.get(match_id)
+    if to_delete != None:
+        for d in to_delete:
+            members = d.members
+            for member in members:
+                await member.move_to(lobby_channel)
+            await d.delete()
+        channels.pop(match_id)
+    else:
+        print("Match was cancelled but no channel was to be deleted.")
     return
 
 """
@@ -153,18 +171,19 @@ async def matches(context):
     if channel.type != ChannelType.text:
         return
 
-    # Delete message
-    await context.message.delete()
-
     matches = get_ongoing_matches(channel.id)
 
     if (len(matches['items']) == 0):
         await channel.send('There are currently no ongoing matches.', delete_after=20)
+        # Delete message
+        await context.message.delete()
         return
 
     # Check if our GET request succeeded
     if (matches == None):
         await channel.send('I had trouble fetching matches :( Notify staff and try again later.', delete_after=20)
+        # Delete message
+        await context.message.delete()
         return
 
     for item in matches['items']:
@@ -194,19 +213,24 @@ async def matches(context):
     
         await channel.send(embed=score, delete_after=30)
 
+    # Delete message
+    await context.message.delete()
+
     return
 
 @client.event
 async def on_message(message):
     # Catch FACEIT webhook!
     if (message.webhook_id):
-        if (message.content == "match_status_ready"):
-            await match_ready(message)
-        elif (message.content == "match_status_finished"):
-            await match_finished(message)
-        elif (message.content == "match_status_cancelled"):
-            await match_cancelled(message)
-        await message.delete()
+        parsed = json.loads(message.content)
+        print(parsed)
+        if (parsed['event'] == "match_status_ready"):
+            await match_ready(message, parsed)
+        elif (parsed['event'] == "match_status_finished"):
+            await match_finished(message, parsed)
+        elif (parsed['event'] == "match_status_cancelled"):
+            await match_cancelled(message, parsed)
+        #await message.delete()
         return
     else:
         # Don't process bot messages
