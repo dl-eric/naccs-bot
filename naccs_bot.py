@@ -30,6 +30,14 @@ client = Bot(command_prefix=BOT_PREFIX)
 # Mapping of FACEIT Match ID -> List(Discord Voice Channels)
 channels = {}
 
+DB_HOST     = os.environ.get('DB_HOST')
+DB_PASSWORD = os.environ.get('DB_PASSWORD')
+DB_DB       = os.environ.get('DB_DB')
+DB_USER     = os.environ.get('DB_USER')
+db          = pymysql.connect(host=DB_HOST, user=DB_USER, 
+                            password=DB_PASSWORD, db=DB_DB, charset='utf8mb4', 
+                            cursorclass=pymysql.cursors.DictCursor)
+
 """
 -------------------------------------------------------------------------------
     FACEIT API Helpers
@@ -74,15 +82,28 @@ def get_powerpug_category(guild):
             return category
     return None
 
+#
+#   Query discord username from faceit username
+#
+def get_discord_from_faceit(faceit):
+    print("Finding", faceit)
+    try:
+        with db.cursor() as cursor:
+            sql = "select discord from users_profile where faceit=%s"
+            cursor.execute(sql, (faceit,))
+            return cursor.fetchone().get('discord')
+    except:
+        print("Unable to SQL for", faceit)
+        return None
+
 # On match ready
 
 # 1. Get match ID
-# 2. Get match via match ID
-# 3. Get FACEIT players in match
-# 4. Get FACEIT player -> discord id mapping via db
-# 5. Create 2 voice channels with appropriate roles
-# 6. Create match id to voice channel mapping 
-# 7. Move discord ids to appropriate voice channels
+# 2. Get FACEIT players in match
+# 3. Get FACEIT player -> discord id mapping via db
+# 4. Create 2 voice channels with appropriate roles
+# 5. Create match id to voice channel mapping 
+# 6. Move discord ids to appropriate voice channels
 async def match_ready(message, parsed):
     print("Match ready")
     guild = message.guild
@@ -92,8 +113,19 @@ async def match_ready(message, parsed):
     channel_list = []
     for team in parsed.get('teams'):
         channel = await guild.create_voice_channel(team.get('team_name'), category=category, user_limit=5)
+
         for player in team.get('players'):
-            print("Player name:", player)
+            discord_player = get_discord_from_faceit(player)
+            if discord_player == None or discord_player == '':
+                print("Could not find discord name for", player)
+                continue
+
+            member = guild.get_member_named(discord_player)
+            try:
+                await member.move_to(channel)
+            except:
+                print("Failed to move player", discord_player)
+
         channel_list.append(channel)
 
     channels[match_id] = channel_list
@@ -123,7 +155,7 @@ async def match_finished(message, parsed):
     return
 
 async def match_cancelled(message, parsed):
-    print("Match finished")
+    print("Match cancelled")
     global channels
     lobby_channel = message.guild.get_channel(583601364010270763)
     match_id = parsed.get('match_id')
@@ -230,7 +262,7 @@ async def on_message(message):
             await match_finished(message, parsed)
         elif (parsed['event'] == "match_status_cancelled"):
             await match_cancelled(message, parsed)
-        #await message.delete()
+        await message.delete()
         return
     else:
         # Don't process bot messages
@@ -249,5 +281,3 @@ if __name__ == '__main__':
 
     # Run Discord Bot
     client.run(DISCORD_TOKEN)
-
-    # Start listening for FACEIT webhook
