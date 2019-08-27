@@ -204,7 +204,7 @@ async def match_cancelled(message, parsed):
                 pass_context=True)
 async def verify(context):
     author = context.message.author
-    
+
     if is_verified(author):
         # Assign role
         role = get(context.guild.roles, name="Member")
@@ -213,7 +213,7 @@ async def verify(context):
         # Change nickname
         # TODO
 
-        await author.send("You're verified! I've assigned you the Member role, and tagged your college onto your nickname. GLHF!")
+        await author.send("You're verified! I've assigned you the Member role. GLHF!")
     else:
         await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! If you're sure that you have everything in order, contact NACCS staff.")
 
