@@ -17,7 +17,7 @@ GENERAL_HUB         = "a67c2ead-9968-4e8b-957b-fb8bc244b302"
 
 # Discord Channel IDs
 POWER_PUG_CHANNEL   = 610367175487913984
-GENERAL_CHANNEL     = 0
+GENERAL_CHANNEL     = 615733303424843798
 
 # Secrets
 DISCORD_TOKEN       = os.environ.get('DISCORD_TOKEN')
@@ -37,6 +37,43 @@ DB_USER     = os.environ.get('DB_USER')
 db          = pymysql.connect(host=DB_HOST, user=DB_USER, 
                             password=DB_PASSWORD, db=DB_DB, charset='utf8mb4', 
                             cursorclass=pymysql.cursors.DictCursor)
+
+"""
+-------------------------------------------------------------------------------
+    MySQL Query Helpers
+-------------------------------------------------------------------------------
+"""
+#
+#   Check if discord user is verified on website
+#
+def is_verified(discord_name):
+    try:
+        with db.cursor() as cursor:
+            sql = "select verified_student from users_profile where discord=%s"
+            cursor.execute(sql, (str(discord_name),))
+            verified_student = cursor.fetchone().get('verified_student')
+
+            if (verified_student == True):
+                return True
+            else:
+                return False
+    except Exception as e:
+        print("Unable to SQL for", discord_name, e)
+        return False
+
+#
+#   Query discord username from faceit username
+#
+def get_discord_from_faceit(faceit):
+    print("Finding", faceit)
+    try:
+        with db.cursor() as cursor:
+            sql = "select discord from users_profile where faceit=%s"
+            cursor.execute(sql, (faceit,))
+            return cursor.fetchone().get('discord')
+    except Exception as e:
+        print("Unable to SQL for", faceit, e)
+        return None
 
 """
 -------------------------------------------------------------------------------
@@ -72,29 +109,13 @@ def get_ongoing_matches(channel_id):
 -------------------------------------------------------------------------------
 """
 #
+#   Get category object by going through all categories
 #
-#   Get powerpug category by going through all categories
-#
-#
-def get_powerpug_category(guild):
+def get_category(guild, category_id):
     for category in guild.categories:
-        if category.id == 583601230073298954:
+        if category.id == category_id:
             return category
     return None
-
-#
-#   Query discord username from faceit username
-#
-def get_discord_from_faceit(faceit):
-    print("Finding", faceit)
-    try:
-        with db.cursor() as cursor:
-            sql = "select discord from users_profile where faceit=%s"
-            cursor.execute(sql, (faceit,))
-            return cursor.fetchone().get('discord')
-    except:
-        print("Unable to SQL for", faceit)
-        return None
 
 # On match ready
 
@@ -107,7 +128,8 @@ def get_discord_from_faceit(faceit):
 async def match_ready(message, parsed):
     print("Match ready")
     guild = message.guild
-    category = get_powerpug_category(guild)
+
+    category = get_category(guild, message.channel.category_id)
     
     match_id = parsed.get('match_id')
     channel_list = []
@@ -188,6 +210,17 @@ async def verify(context):
     # 3a. If in db, assign Member role
     # 3b. Else, send dm to user
     # 4. Delete message
+    if is_verified(author):
+        # Assign role
+        role = get(context.guild.roles, name="Member")
+        await author.add_roles(role)
+        
+        # Change nickname
+        # TODO
+
+        await author.send("You're verified! I've assigned you the Member role, and tagged your college onto your nickname. GLHF!")
+    else:
+        await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! If you're sure that you have everything in order, contact NACCS staff.")
 
     return
 
