@@ -49,11 +49,15 @@ db          = pymysql.connect(host=DB_HOST, user=DB_USER,
 def is_verified(discord_name):
     try:
         with db.cursor() as cursor:
-            sql = "select verified_student from users_profile where discord=%s"
+            sql = "select verified_student, faceit, discord from users_profile where discord=%s"
             cursor.execute(sql, (str(discord_name),))
-            verified_student = cursor.fetchone().get('verified_student')
-
-            if (verified_student == True):
+            result = cursor.fetchone()
+            verified_student = result.get('verified_student')
+            faceit = result.get('faceit')
+            discord = result.get('discord')
+            print(verified_student, faceit, discord)
+            
+            if (verified_student == True and not faceit and not discord):
                 return True
             else:
                 return False
