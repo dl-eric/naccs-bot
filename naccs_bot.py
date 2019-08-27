@@ -204,12 +204,7 @@ async def match_cancelled(message, parsed):
                 pass_context=True)
 async def verify(context):
     author = context.message.author
-
-    # 1. Get all unverified users
-    # 2. Check discords of all unverified users to author
-    # 3a. If in db, assign Member role
-    # 3b. Else, send dm to user
-    # 4. Delete message
+    
     if is_verified(author):
         # Assign role
         role = get(context.guild.roles, name="Member")
