@@ -232,11 +232,6 @@ async def verify(context):
                 pass_context=True)
 async def matches(context):
     channel = context.channel
-
-    # If a user dm's the bot, we want to ignore it.
-    if channel.type != ChannelType.text:
-        return
-
     matches = get_ongoing_matches(channel.id)
 
     if (len(matches['items']) == 0):
@@ -286,6 +281,10 @@ async def matches(context):
 
 @client.event
 async def on_message(message):
+    # If a user dm's the bot, we want to ignore it.
+    if message.channel.type != ChannelType.text:
+        return
+    
     # Catch FACEIT webhook!
     if (message.webhook_id):
         parsed = json.loads(message.content)
