@@ -222,6 +222,8 @@ async def verify(context):
     else:
         await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! If you're sure that you have everything in order, contact NACCS staff.")
 
+    await context.message.delete()
+
     return
 
 
