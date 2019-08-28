@@ -18,6 +18,10 @@ GENERAL_HUB         = "a67c2ead-9968-4e8b-957b-fb8bc244b302"
 # Discord Channel IDs
 POWER_PUG_CHANNEL   = 610367175487913984
 GENERAL_CHANNEL     = 615733303424843798
+POWER_PUG_CATEGORY  = 583601230073298954
+GENERAL_CATEGORY    = 546131185797955600
+POWER_PUG_LOBBY     = 583601364010270763
+GENERAL_LOBBY       = 542495905484505108
 
 # Secrets
 DISCORD_TOKEN       = os.environ.get('DISCORD_TOKEN')
@@ -36,7 +40,7 @@ DB_DB       = os.environ.get('DB_DB')
 DB_USER     = os.environ.get('DB_USER')
 db          = pymysql.connect(host=DB_HOST, user=DB_USER, 
                             password=DB_PASSWORD, db=DB_DB, charset='utf8mb4', 
-                            cursorclass=pymysql.cursors.DictCursor)
+                            cursorclass=pymysql.cursors.DictCursor, autocommit=True)
 
 """
 -------------------------------------------------------------------------------
@@ -57,7 +61,7 @@ def is_verified(discord_name):
             discord = result.get('discord')
             print(verified_student, faceit, discord)
             
-            if (verified_student == True and not faceit and not discord):
+            if (verified_student and faceit and discord):
                 return True
             else:
                 return False
@@ -133,7 +137,10 @@ async def match_ready(message, parsed):
     print("Match ready")
     guild = message.guild
 
-    category = get_category(guild, message.channel.category_id)
+    if parsed.get("hub") == "NACCS Queue":
+        category = get_category(guild, GENERAL_CATEGORY)
+    else:
+        category = get_category(guild, POWER_PUG_CATEGORY)
     
     match_id = parsed.get('match_id')
     channel_list = []
@@ -166,7 +173,12 @@ async def match_ready(message, parsed):
 async def match_finished(message, parsed):
     print("Match finished")
     global channels
-    lobby_channel = message.guild.get_channel(583601364010270763)
+    
+    if parsed.get('hub') == 'NACCS Queue':
+        lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
+    else:
+        lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
+    
     match_id = parsed.get('match_id')
     to_delete = channels.get(match_id)
     if to_delete != None:
@@ -183,7 +195,12 @@ async def match_finished(message, parsed):
 async def match_cancelled(message, parsed):
     print("Match cancelled")
     global channels
-    lobby_channel = message.guild.get_channel(583601364010270763)
+
+    if parsed.get('hub') == 'NACCS Queue':
+        lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
+    else:
+        lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
+
     match_id = parsed.get('match_id')
     to_delete = channels.get(match_id)
     if to_delete != None:
