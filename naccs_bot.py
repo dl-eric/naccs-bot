@@ -38,9 +38,12 @@ DB_HOST     = os.environ.get('DB_HOST')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_DB       = os.environ.get('DB_DB')
 DB_USER     = os.environ.get('DB_USER')
-db          = pymysql.connect(host=DB_HOST, user=DB_USER, 
+
+def db_connect():
+    db = pymysql.connect(host=DB_HOST, user=DB_USER, 
                             password=DB_PASSWORD, db=DB_DB, charset='utf8mb4', 
                             cursorclass=pymysql.cursors.DictCursor, autocommit=True)
+    return db
 
 """
 -------------------------------------------------------------------------------
@@ -51,6 +54,7 @@ db          = pymysql.connect(host=DB_HOST, user=DB_USER,
 #   Check if discord user is verified on website
 #
 def is_verified(discord_name):
+    db = db_connect()
     try:
         with db.cursor() as cursor:
             sql = "select verified_student, faceit, discord from users_profile where discord=%s"
@@ -74,6 +78,7 @@ def is_verified(discord_name):
 #
 def get_discord_from_faceit(faceit):
     print("Finding", faceit)
+    db = db_connect()
     try:
         with db.cursor() as cursor:
             sql = "select discord from users_profile where faceit=%s"
