@@ -8,12 +8,17 @@ import json
 
 BOT_PREFIX = (".")
 
-# FACEIT Data v4 Endpoint
+# FACEIT Endpoints
 FACEIT_DATA_V4      = "https://open.faceit.com/data/v4/"
+FACEIT_QUEUE_API   = "https://api.faceit.com/queue/v1/player/"
 
 # FACEIT Hub IDs
 POWER_PUG_HUB       = "9512ae3b-7322-4821-9eca-6e0db1819b03"
 GENERAL_HUB         = "a67c2ead-9968-4e8b-957b-fb8bc244b302"
+
+# FACEIT Queue IDs
+POWER_QUEUE_ID      = ''
+GENERAL_QUEUE_ID    = '5d42347e5dca6f00071eaa09'
 
 # Discord Channel IDs
 POWER_PUG_CHANNEL   = 610367175487913984
@@ -26,6 +31,7 @@ GENERAL_LOBBY       = 542495905484505108
 # Secrets
 DISCORD_TOKEN       = os.environ.get('DISCORD_TOKEN')
 FACEIT_KEY          = os.environ.get('FACEIT_KEY')
+FACEIT_BOT_KEY      = os.environ.get('FACEIT_BOT_KEY')
 headers             = {"Authorization": "Bearer " + str(FACEIT_KEY)}
 
 # Discord Bot
@@ -93,6 +99,28 @@ def get_discord_from_faceit(faceit):
     FACEIT API Helpers
 -------------------------------------------------------------------------------
 """
+#
+#   Returns number of people in queue for specified channel
+#
+def get_queue_size(channel_id):
+    if (channel_id == POWER_PUG_CHANNEL):
+        endpoint = FACEIT_QUEUE_API + POWER_QUEUE_ID + "?limit=15"
+    elif (channel_id == GENERAL_CHANNEL):
+        endpoint = FACEIT_QUEUE_API + GENERAL_QUEUE_ID + "?limit=15"
+    else:
+        print("Invalid Channel ID. We shouldn't ever see this.")
+        return None
+
+    headers = {'Authorization': 'Bearer ' + str(FACEIT_BOT_KEY)}
+    num = requests.get(endpoint, headers=headers)
+
+    if (num.status_code != 200):
+        print("Could not fetch queue size from", channel_id)
+        print("STATUS", num.status_code)
+        return None
+
+    return len(num.json()['payload'])
+
 #
 #   Get ongoing FACEIT matches for specified channel
 #
@@ -255,6 +283,10 @@ async def verify(context):
 async def matches(context):
     channel = context.channel
     matches = get_ongoing_matches(channel.id)
+    in_queue = get_queue_size(channel.id)
+
+    await channel.send("```Currently in queue: " + str(in_queue) + '```', delete_after=30)
+    
 
     if (len(matches['items']) == 0):
         await channel.send('There are currently no ongoing matches.', delete_after=20)
@@ -283,7 +315,7 @@ async def matches(context):
 
         score = Embed(title=faction1['name'] + ' (' + faction1_score + ')' + ' vs. ' + faction2['name'] + ' (' + faction2_score + ')', 
                         description=location + ' | ' + game_map, 
-                        url=item['faceit_url'])
+                        url=str(item['faceit_url']).replace('{lang}', 'en'))
         
         faction1_roster = ''
         faction2_roster = ''
