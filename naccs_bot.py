@@ -303,28 +303,32 @@ async def matches(context):
 
     for item in matches['items']:
         teams = item['teams']
-        # results = item['results']
         faction1 = teams['faction1']
         faction2 = teams['faction2']
-        # faction1_score = str(results['score']['faction1'])
-        # faction2_score = str(results['score']['faction2'])
+        
         faction1_score = ''
         faction2_score = ''
-        location = item['voting']['location']['pick'][0]
-        game_map = item['voting']['map']['pick'][0]
+        
+        if item['status'] == 'CHECK_IN':
+            location = "Vote in progress"
+            game_map = "Vote in progress"
+        else:
+            location = item['voting']['location']['pick'][0]
+            game_map = item['voting']['map']['pick'][0]
 
         score = Embed(title=faction1['name'] + ' (' + faction1_score + ')' + ' vs. ' + faction2['name'] + ' (' + faction2_score + ')', 
                         description=location + ' | ' + game_map, 
                         url=str(item['faceit_url']).replace('{lang}', 'en'))
         
-        faction1_roster = ''
-        faction2_roster = ''
-        for i in range (5):
-            faction1_roster += faction1['roster'][i]['nickname'] + '\n'
-            faction2_roster += faction2['roster'][i]['nickname'] + '\n'
+        if item['status'] == 'ONGOING':
+            faction1_roster = ''
+            faction2_roster = ''
+            for i in range (5):
+                faction1_roster += faction1['roster'][i]['nickname'] + '\n'
+                faction2_roster += faction2['roster'][i]['nickname'] + '\n'
 
-        score.add_field(name=faction1['name'] + ' (' + faction1_score + ')', value=faction1_roster)
-        score.add_field(name=faction2['name'] + ' (' + faction2_score + ')', value=faction2_roster)
+            score.add_field(name=faction1['name'] + ' (' + faction1_score + ')', value=faction1_roster)
+            score.add_field(name=faction2['name'] + ' (' + faction2_score + ')', value=faction2_roster)
     
         await channel.send(embed=score, delete_after=30)
 
