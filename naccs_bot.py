@@ -309,7 +309,7 @@ async def matches(context):
         faction1_score = ''
         faction2_score = ''
         
-        if item['status'] == 'CHECK_IN':
+        if item['status'] != 'ONGOING' and item['status'] != 'READY':
             location = "Vote in progress"
             game_map = "Vote in progress"
         else:
@@ -320,7 +320,7 @@ async def matches(context):
                         description=location + ' | ' + game_map, 
                         url=str(item['faceit_url']).replace('{lang}', 'en'))
         
-        if item['status'] == 'ONGOING':
+        if item['status'] == 'ONGOING' or item['status'] == 'READY':
             faction1_roster = ''
             faction2_roster = ''
             for i in range (5):
