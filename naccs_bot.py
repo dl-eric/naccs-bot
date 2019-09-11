@@ -269,7 +269,7 @@ async def verify(context):
 
         await author.send("You're verified! I've assigned you the Member role. GLHF!")
     else:
-        await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! If you're sure that you have everything in order, contact NACCS staff.")
+        await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! A common issue people encounter is that the Discord account they link is not the Discord account that's logged into their client. Make sure the Discord account you link is EXACTLY the one you're using right now! If you're sure that you have everything in order, contact NACCS staff.")
 
     await context.message.delete()
 
