@@ -170,7 +170,7 @@ async def match_ready(message, parsed):
     print("Match ready")
     guild = message.guild
 
-    if parsed.get("hub") == "NACCS Queue":
+    if parsed.get("hub") == "NACCS Collegiate Hub":
         category = get_category(guild, GENERAL_CATEGORY)
     else:
         category = get_category(guild, POWER_PUG_CATEGORY)
