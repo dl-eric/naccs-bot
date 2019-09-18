@@ -207,7 +207,7 @@ async def match_finished(message, parsed):
     print("Match finished")
     global channels
     
-    if parsed.get('hub') == 'NACCS Queue':
+    if parsed.get('hub') == 'NACCS Collegiate Hub':
         lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
     else:
         lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
@@ -229,7 +229,7 @@ async def match_cancelled(message, parsed):
     print("Match cancelled")
     global channels
 
-    if parsed.get('hub') == 'NACCS Queue':
+    if parsed.get('hub') == 'NACCS Collegiate Hub':
         lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
     else:
         lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
