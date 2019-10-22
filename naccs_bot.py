@@ -172,9 +172,11 @@ async def match_ready(message, parsed):
 
     if parsed.get("hub") == "NACCS Collegiate Hub":
         category = get_category(guild, GENERAL_CATEGORY)
-    else:
+    elif parsed.get("hub") == "NACCS Power Pugs":
         category = get_category(guild, POWER_PUG_CATEGORY)
-    
+    else:
+        return
+
     match_id = parsed.get('match_id')
     channel_list = []
     for team in parsed.get('teams'):
@@ -209,9 +211,11 @@ async def match_finished(message, parsed):
     
     if parsed.get('hub') == 'NACCS Collegiate Hub':
         lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
-    else:
+    elif parsed.get('hub') == 'NACCS Power Pugs':
         lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
-    
+    else:
+        return
+
     match_id = parsed.get('match_id')
     to_delete = channels.get(match_id)
     if to_delete != None:
@@ -231,8 +235,10 @@ async def match_cancelled(message, parsed):
 
     if parsed.get('hub') == 'NACCS Collegiate Hub':
         lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
-    else:
+    elif parsed.get('hub') == 'NACCS Power Pugs':
         lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
+    else:
+        return
 
     match_id = parsed.get('match_id')
     to_delete = channels.get(match_id)
