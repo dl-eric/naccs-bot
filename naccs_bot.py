@@ -170,7 +170,7 @@ async def match_ready(message, parsed):
     print("Match ready")
     guild = message.guild
 
-    if parsed.get("hub") == "NACCS Collegiate Hub":
+    if parsed.get("hub") == "NACCS Collegiate Queue":
         category = get_category(guild, GENERAL_CATEGORY)
     elif parsed.get("hub") == "NACCS Power Pugs":
         category = get_category(guild, POWER_PUG_CATEGORY)
@@ -209,7 +209,7 @@ async def match_finished(message, parsed):
     print("Match finished")
     global channels
     
-    if parsed.get('hub') == 'NACCS Collegiate Hub':
+    if parsed.get('hub') == 'NACCS Collegiate Queue':
         lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
     elif parsed.get('hub') == 'NACCS Power Pugs':
         lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
@@ -233,7 +233,7 @@ async def match_cancelled(message, parsed):
     print("Match cancelled")
     global channels
 
-    if parsed.get('hub') == 'NACCS Collegiate Hub':
+    if parsed.get('hub') == 'NACCS Collegiate Queue':
         lobby_channel = message.guild.get_channel(GENERAL_LOBBY)
     elif parsed.get('hub') == 'NACCS Power Pugs':
         lobby_channel = message.guild.get_channel(POWER_PUG_LOBBY)
