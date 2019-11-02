@@ -268,7 +268,7 @@ async def pingme(context):
     role = get(context.guild.roles, name="Ping")
     await author.add_roles(role)
     await author.send("I've given you the Ping role! GLHF!")
-    await context.message.delete()
+    await context.message.delete(delay=2)
 
     return
 
@@ -282,7 +282,7 @@ async def noping(context):
     role = get(context.guild.roles, name="Ping")
     await author.remove_roles(role)
     await author.send("You no longer have the Ping role.")
-    await context.message.delete()
+    await context.message.delete(delay=2)
 
     return
 
@@ -306,7 +306,7 @@ async def verify(context):
     else:
         await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! A common issue people encounter is that the Discord account they link is not the Discord account that's logged into their client. Make sure the Discord account you link is EXACTLY the one you're using right now! If you're sure that you have everything in order, contact NACCS staff.")
 
-    await context.message.delete()
+    await context.message.delete(delay=2)
 
     return
 
@@ -326,14 +326,14 @@ async def matches(context):
     if (len(matches['items']) == 0):
         await channel.send('There are currently no ongoing matches.', delete_after=20)
         # Delete message
-        await context.message.delete()
+        await context.message.delete(delay=2)
         return
 
     # Check if our GET request succeeded
     if (matches == None):
         await channel.send('I had trouble fetching matches :( Notify staff and try again later.', delete_after=20)
         # Delete message
-        await context.message.delete()
+        await context.message.delete(delay=2)
         return
 
     for item in matches['items']:
@@ -368,7 +368,7 @@ async def matches(context):
         await channel.send(embed=score, delete_after=30)
 
     # Delete message
-    await context.message.delete()
+    await context.message.delete(delay=2)
 
     return
 
@@ -388,7 +388,7 @@ async def on_message(message):
             await match_finished(message, parsed)
         elif (parsed['event'] == "match_status_cancelled"):
             await match_cancelled(message, parsed)
-        await message.delete()
+        await message.delete(delay=1)
         return
     else:
         # Don't process bot messages
@@ -400,7 +400,9 @@ async def on_message(message):
 @client.event
 async def on_command_error(context, error):
     if isinstance(error, CommandNotFound):
-        await context.message.delete()
+        # Wait 3 seconds before deleting because Discord glitches out if we
+        # delete it immediately after user writes the message.
+        await context.message.delete(delay=2)
         return
 
     raise error
