@@ -267,6 +267,9 @@ async def pingme(context):
     
     role = get(context.guild.roles, name="Ping")
     await author.add_roles(role)
+    await author.send("I've given you the Ping role! GLHF!")
+    await context.message.delete()
+
     return
 
 @client.command(name='noping',
@@ -278,6 +281,9 @@ async def noping(context):
     
     role = get(context.guild.roles, name="Ping")
     await author.remove_roles(role)
+    await author.send("You no longer have the Ping role.")
+    await context.message.delete()
+
     return
 
 @client.command(name='verify',
@@ -389,7 +395,12 @@ async def on_message(message):
         if (message.author.bot):
             return
 
-        await client.process_commands(message)
+        try:
+            await client.process_commands(message)
+        except:
+            # Something went wrong while processing the command. Clean up the
+            # message.
+            await message.delete()
 
 """
 -------------------------------------------------------------------------------
