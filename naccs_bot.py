@@ -258,6 +258,28 @@ async def match_cancelled(message, parsed):
     Discord client commands
 -------------------------------------------------------------------------------
 """
+@client.command(name='pingme',
+                description="Get the Ping role so you can be notified for Collegiate Hub queues",
+                brief="Get the Ping role",
+                pass_context=True)
+async def pingme(context):
+    author = context.message.author
+    
+    role = get(context.guild.roles, name="Ping")
+    await author.add_roles(role)
+    return
+
+@client.command(name='noping',
+                description="Remove yourself from the Ping role so you no longer get pinged by the Collegiate Queue",
+                brief="Remove the Ping role from yourself",
+                pass_context=True)
+async def noping(context):
+    author = context.message.author
+    
+    role = get(context.guild.roles, name="Ping")
+    await author.remove_roles(role)
+    return
+
 @client.command(name='verify',
                 description="Check discord user if they exist in NACCS user db to give Member role",
                 brief="Verify user status",
@@ -267,13 +289,14 @@ async def verify(context):
 
     if is_verified(author):
         # Assign role
-        role = get(context.guild.roles, name="Member")
-        await author.add_roles(role)
+        member_role = get(context.guild.roles, name="Member")
+        ping_role = get(context.guild.roles, name="Ping")
+        await author.add_roles(member_role, ping_role)
         
         # Change nickname
         # TODO
 
-        await author.send("You're verified! I've assigned you the Member role. GLHF!")
+        await author.send("You're verified! I've assigned you the Member role and the Ping role. The Ping role will subscribes you to a ping for when the Collegiate Hub gets active. If you don't want it, head over to #pingtoggle and type '.noping'. Also be sure to change your nickname with your college tag. GLHF!")
     else:
         await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! A common issue people encounter is that the Discord account they link is not the Discord account that's logged into their client. Make sure the Discord account you link is EXACTLY the one you're using right now! If you're sure that you have everything in order, contact NACCS staff.")
 
