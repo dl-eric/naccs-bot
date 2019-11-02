@@ -1,4 +1,4 @@
-from discord.ext.commands import Bot
+from discord.ext.commands import Bot, CommandNotFound
 from discord.utils import get
 from discord import ChannelType, Embed
 import requests
@@ -395,12 +395,15 @@ async def on_message(message):
         if (message.author.bot):
             return
 
-        try:
-            await client.process_commands(message)
-        except:
-            # Something went wrong while processing the command. Clean up the
-            # message.
-            await message.delete()
+        await client.process_commands(message)
+
+@client.event
+async def on_command_error(context, error):
+    if isinstance(error, CommandNotFound):
+        await context.message.delete()
+        return
+
+    raise error
 
 """
 -------------------------------------------------------------------------------
