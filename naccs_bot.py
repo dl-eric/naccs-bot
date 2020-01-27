@@ -1,20 +1,27 @@
 from discord.ext.commands import Bot, CommandNotFound
 from discord.utils import get
 from discord import ChannelType, Embed
-import requests
 import os
 import pymysql
 import json
+import threading
+import requests
+import asyncio
 
 BOT_PREFIX = (".")
 
 # FACEIT Endpoints
 FACEIT_DATA_V4      = "https://open.faceit.com/data/v4/"
 FACEIT_QUEUE_API   = "https://api.faceit.com/queue/v1/player/"
+FACEIT_STREAMINGS_V1 = "https://api.faceit.com/stream/v1/streamings?limit=20&offset=0&competitionType=championship&competitionId="
 
 # FACEIT Hub IDs
 POWER_PUG_HUB       = "9512ae3b-7322-4821-9eca-6e0db1819b03"
 GENERAL_HUB         = "a67c2ead-9968-4e8b-957b-fb8bc244b302"
+
+# FACEIT Division IDs
+VARSITY = '78aa12dc-6234-4abc-ab54-02eb3408039f'
+JUNIOR_VARSITY = 'cb04e1b2-a0c8-4212-9eb6-54243afbfa5b'
 
 # FACEIT Queue IDs
 POWER_QUEUE_ID      = ''
@@ -27,6 +34,7 @@ POWER_PUG_CATEGORY  = 583601230073298954
 GENERAL_CATEGORY    = 546131185797955600
 POWER_PUG_LOBBY     = 583601364010270763
 GENERAL_LOBBY       = 542495905484505108
+LEAGUE_STREAMS      = 653368287010357248
 
 # Secrets
 DISCORD_TOKEN       = os.environ.get('DISCORD_TOKEN')
@@ -39,6 +47,11 @@ client = Bot(command_prefix=BOT_PREFIX)
 
 # Mapping of FACEIT Match ID -> List(Discord Voice Channels)
 channels = {}
+
+# Global vars for get_streams()
+DISPLAYEDSTREAMS = {}
+DISPLAYEDSTREAMS2 = {}
+toggle = 0
 
 DB_HOST     = os.environ.get('DB_HOST')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
@@ -143,6 +156,72 @@ def get_ongoing_matches(channel_id):
         return None
     return matches.json()
 
+#
+#   Get ongoing FACEIT streams for both divisions
+#
+async def get_streams():
+    # Getting our globals
+  global DISPLAYEDSTREAMS
+  global DISPLAYEDSTREAMS2
+  global toggle
+  # Resetting activestreams for each division to find so we can check to make sure they are still live
+  activestreams = {}
+  activestreams2 = {}
+  # Simple toggle / workaround. Works to reduce performance inhibitance and restricts the function to one api at a time
+  if (toggle == 1):
+        streams = requests.get(FACEIT_STREAMINGS_V1 + VARSITY)
+        toggle = 0
+  else:
+        streams = requests.get(FACEIT_STREAMINGS_V1 + JUNIOR_VARSITY)
+        toggle = 1
+  streams_data = streams.json()
+  jsonstreams = streams_data
+
+  if (toggle == 1):
+      dispstreams = DISPLAYEDSTREAMS
+  else:
+      dispstreams = DISPLAYEDSTREAMS2
+
+  x = 'payload'
+  count = 0
+  for x in jsonstreams: 
+        if isinstance(jsonstreams[x], list): 
+            count += len(jsonstreams[x]) 
+  for x in range(count):
+      # Nodes to use for the messages, can be customized with Discord.py spec
+    nick = (jsonstreams["payload"][x]["userNickname"])
+    image = (jsonstreams["payload"][x]["stream"]["channelLogo"])
+    competitionName = (jsonstreams["payload"][x]["competitionName"])
+    channelUrl = (jsonstreams["payload"][x]["stream"]["channelUrl"])
+    if (toggle == 1):
+        activestreams[nick] = nick
+    else:
+        activestreams2[nick] = nick
+    if nick in dispstreams:
+        # No need for another embed if they already have one.
+        continue
+    else:
+        # Creating an embed for the streamer
+        channel = client.get_channel(LEAGUE_STREAMS)
+        embed = Embed(title=nick, url=channelUrl, description=competitionName, color=0x5e7aac)
+        embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
+        embed.set_thumbnail(url=image)
+        activeembed = await channel.send(embed=embed)
+        dispstreams[nick] = activeembed.id
+    # From here down is checking to see if our active displayed streamers are still in the api, if not, we will delete their messages.
+  if (toggle == 1):
+      overactive = activestreams
+  else:
+      overactive = activestreams2
+  over = { k : dispstreams[k] for k in set(dispstreams) - set(overactive) }
+
+  if over:
+      for key in over:
+        channel = client.get_channel(LEAGUE_STREAMS)
+        msg = await channel.fetch_message(dispstreams[key])
+        await msg.delete()
+        del dispstreams[key]
+        over = {}
 
 """
 -------------------------------------------------------------------------------
@@ -407,6 +486,13 @@ async def on_command_error(context, error):
 
     raise error
 
+# Simple call to async get_streams() every five seconds
+@client.event
+async def on_ready():
+    await get_streams()
+    await asyncio.sleep(5)
+    await on_ready()
+
 """
 -------------------------------------------------------------------------------
     Main
@@ -414,6 +500,5 @@ async def on_command_error(context, error):
 """
 if __name__ == '__main__':
     print("Bot Starting...")
-
     # Run Discord Bot
     client.run(DISCORD_TOKEN)
