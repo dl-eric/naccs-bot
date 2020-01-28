@@ -49,10 +49,8 @@ client = Bot(command_prefix=BOT_PREFIX)
 # Mapping of FACEIT Match ID -> List(Discord Voice Channels)
 channels = {}
 
-# Global vars for get_streams()
+# Global var for get_streams()
 displayed_streams = {}
-displayed_streams2 = {}
-toggle = 0
 
 DB_HOST     = os.environ.get('DB_HOST')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
@@ -160,73 +158,53 @@ def get_ongoing_matches(channel_id):
 #
 #   Get ongoing FACEIT streams for both divisions
 #
-# Loop function, seperate from main code so that we can execute both requests at the same time.
+# 
+
 @loop(minutes=5)
 async def get_streams():
-    await run_get_streams()
-
-async def run_get_streams():
-    # Getting our globals
     global displayed_streams
-    global displayed_streams2
-    global toggle
 
-    activestreams = {}
-    activestreams2 = {}
-  
-    if (toggle == 1):
-        streams = requests.get(FACEIT_STREAMINGS_V1 + VARSITY)
-        toggle = 0
-    else:
-        streams = requests.get(FACEIT_STREAMINGS_V1 + JUNIOR_VARSITY)
-        toggle = 1
-    streams_data = streams.json()
-    jsonstreams = streams_data
+    active_streams = {}
+    response_varsity = requests.get(FACEIT_STREAMINGS_V1 + VARSITY)
+    respone_juniorvaristy = requests.get(FACEIT_STREAMINGS_V1 + JUNIOR_VARSITY)
+    varsity_data = response_varsity.json()
+    jv_data = respone_juniorvaristy.json()
 
-    if (toggle == 1):
-        dispstreams = displayed_streams
-    else:
-        dispstreams = displayed_streams2
+    stream_responses = {0: varsity_data, 1: jv_data}
 
-    count = 0
-    for x in jsonstreams: 
-        if isinstance(jsonstreams[x], list): 
-            count += len(jsonstreams[x]) 
-    for x in range(count):
-      # Nodes to use for the messages, can be customized with Discord.py spec
-        nick = (jsonstreams["payload"][x]["userNickname"])
-        image = (jsonstreams["payload"][x]["stream"]["channelLogo"])
-        competitionName = (jsonstreams["payload"][x]["competitionName"])
-        channelUrl = (jsonstreams["payload"][x]["stream"]["channelUrl"])
-        if (toggle == 1):
-            activestreams[nick] = nick
-        else:
-            activestreams2[nick] = nick
-        if nick in dispstreams:
-            continue
-        else:
+    for i in stream_responses:
+        streams_json = stream_responses[i]
+        print(streams_json)
+
+        count = 0
+        for x in streams_json: 
+            if isinstance(streams_json[x], list): 
+                count += len(streams_json[x]) 
+        for x in range(count):
+            response_nick = (streams_json["payload"][x]["userNickname"])
+            response_image = (streams_json["payload"][x]["stream"]["channelLogo"])
+            response_comp_name = (streams_json["payload"][x]["response_comp_name"])
+            response_channel_url = (streams_json["payload"][x]["stream"]["response_channel_url"])
+            active_streams[response_nick] = response_nick
+            if response_nick in displayed_streams:
+                continue
+            else:
+                channel = client.get_channel(LEAGUE_STREAMS)
+                embed = Embed(title=response_nick, url=response_channel_url, description=response_comp_name, color=0x5e7aac)
+                embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
+                embed.set_thumbnail(url=response_image)
+                embed_active = await channel.send(embed=embed)
+                displayed_streams[response_nick] = embed_active.id
+
+    #Check to see if streams have ended, if so, remove the messages
+    stream_over = { k : displayed_streams[k] for k in set(displayed_streams) - set(active_streams) }
+    if stream_over:
+        for key in stream_over:
             channel = client.get_channel(LEAGUE_STREAMS)
-            embed = Embed(title=nick, url=channelUrl, description=competitionName, color=0x5e7aac)
-            embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
-            embed.set_thumbnail(url=image)
-            activeembed = await channel.send(embed=embed)
-            dispstreams[nick] = activeembed.id
-    # From here down is checking to see if our active displayed streamers are still in the api, if not, we will delete their messages.
-    if (toggle == 1):
-        overactive = activestreams
-    else:
-        overactive = activestreams2
-    over = { k : dispstreams[k] for k in set(dispstreams) - set(overactive) }
-    if over:
-        for key in over:
-            channel = client.get_channel(LEAGUE_STREAMS)
-            msg = await channel.fetch_message(dispstreams[key])
+            msg = await channel.fetch_message(displayed_streams[key])
             await msg.delete()
-            del dispstreams[key]
-            over = {}
-
-    if (toggle == 1):
-        await run_get_streams()
+            del displayed_streams[key]
+            stream_over = {}
 
 """
 -------------------------------------------------------------------------------
