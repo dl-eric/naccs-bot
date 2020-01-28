@@ -1,20 +1,28 @@
 from discord.ext.commands import Bot, CommandNotFound
 from discord.utils import get
+from discord.ext.tasks import loop
 from discord import ChannelType, Embed
-import requests
 import os
 import pymysql
 import json
+import threading
+import requests
+import asyncio
 
 BOT_PREFIX = (".")
 
 # FACEIT Endpoints
 FACEIT_DATA_V4      = "https://open.faceit.com/data/v4/"
 FACEIT_QUEUE_API   = "https://api.faceit.com/queue/v1/player/"
+FACEIT_STREAMINGS_V1 = "https://api.faceit.com/stream/v1/streamings?limit=20&offset=0&competitionType=championship&competitionId="
 
 # FACEIT Hub IDs
 POWER_PUG_HUB       = "9512ae3b-7322-4821-9eca-6e0db1819b03"
 GENERAL_HUB         = "a67c2ead-9968-4e8b-957b-fb8bc244b302"
+
+# FACEIT Division IDs
+VARSITY = '78aa12dc-6234-4abc-ab54-02eb3408039f'
+JUNIOR_VARSITY = 'cb04e1b2-a0c8-4212-9eb6-54243afbfa5b'
 
 # FACEIT Queue IDs
 POWER_QUEUE_ID      = ''
@@ -27,6 +35,7 @@ POWER_PUG_CATEGORY  = 583601230073298954
 GENERAL_CATEGORY    = 546131185797955600
 POWER_PUG_LOBBY     = 583601364010270763
 GENERAL_LOBBY       = 542495905484505108
+LEAGUE_STREAMS      = 653368287010357248
 
 # Secrets
 DISCORD_TOKEN       = os.environ.get('DISCORD_TOKEN')
@@ -39,6 +48,9 @@ client = Bot(command_prefix=BOT_PREFIX)
 
 # Mapping of FACEIT Match ID -> List(Discord Voice Channels)
 channels = {}
+
+# Global var for get_streams()
+displayed_streams = {}
 
 DB_HOST     = os.environ.get('DB_HOST')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
@@ -143,6 +155,56 @@ def get_ongoing_matches(channel_id):
         return None
     return matches.json()
 
+#
+#   Get ongoing FACEIT streams for both divisions
+#
+# 
+
+@loop(minutes=5)
+async def get_streams():
+    global displayed_streams
+
+    active_streams = {}
+    response_varsity = requests.get(FACEIT_STREAMINGS_V1 + VARSITY)
+    respone_juniorvaristy = requests.get(FACEIT_STREAMINGS_V1 + JUNIOR_VARSITY)
+    varsity_data = response_varsity.json()
+    jv_data = respone_juniorvaristy.json()
+
+    stream_responses = {0: varsity_data, 1: jv_data}
+
+    for i in stream_responses:
+        streams_json = stream_responses[i]
+        print(streams_json)
+
+        count = 0
+        for x in streams_json: 
+            if isinstance(streams_json[x], list): 
+                count += len(streams_json[x]) 
+        for x in range(count):
+            response_nick = (streams_json["payload"][x]["userNickname"])
+            response_image = (streams_json["payload"][x]["stream"]["channelLogo"])
+            response_comp_name = (streams_json["payload"][x]["response_comp_name"])
+            response_channel_url = (streams_json["payload"][x]["stream"]["response_channel_url"])
+            active_streams[response_nick] = response_nick
+            if response_nick in displayed_streams:
+                continue
+            else:
+                channel = client.get_channel(LEAGUE_STREAMS)
+                embed = Embed(title=response_nick, url=response_channel_url, description=response_comp_name, color=0x5e7aac)
+                embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
+                embed.set_thumbnail(url=response_image)
+                embed_active = await channel.send(embed=embed)
+                displayed_streams[response_nick] = embed_active.id
+
+    #Check to see if streams have ended, if so, remove the messages
+    stream_over = { k : displayed_streams[k] for k in set(displayed_streams) - set(active_streams) }
+    if stream_over:
+        for key in stream_over:
+            channel = client.get_channel(LEAGUE_STREAMS)
+            msg = await channel.fetch_message(displayed_streams[key])
+            await msg.delete()
+            del displayed_streams[key]
+            stream_over = {}
 
 """
 -------------------------------------------------------------------------------
@@ -407,6 +469,11 @@ async def on_command_error(context, error):
 
     raise error
 
+@client.event
+async def on_ready():
+    #Call get_streams() and begin 5 minute timer
+    await get_streams.start()
+
 """
 -------------------------------------------------------------------------------
     Main
@@ -414,6 +481,5 @@ async def on_command_error(context, error):
 """
 if __name__ == '__main__':
     print("Bot Starting...")
-
     # Run Discord Bot
     client.run(DISCORD_TOKEN)
