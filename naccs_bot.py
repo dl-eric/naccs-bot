@@ -1,5 +1,6 @@
 from discord.ext.commands import Bot, CommandNotFound
 from discord.utils import get
+from discord.ext.tasks import loop
 from discord import ChannelType, Embed
 import os
 import pymysql
@@ -49,8 +50,8 @@ client = Bot(command_prefix=BOT_PREFIX)
 channels = {}
 
 # Global vars for get_streams()
-DISPLAYEDSTREAMS = {}
-DISPLAYEDSTREAMS2 = {}
+displayed_streams = {}
+displayed_streams2 = {}
 toggle = 0
 
 DB_HOST     = os.environ.get('DB_HOST')
@@ -159,69 +160,73 @@ def get_ongoing_matches(channel_id):
 #
 #   Get ongoing FACEIT streams for both divisions
 #
+# Loop function, seperate from main code so that we can execute both requests at the same time.
+@loop(minutes=5)
 async def get_streams():
+    await run_get_streams()
+
+async def run_get_streams():
     # Getting our globals
-  global DISPLAYEDSTREAMS
-  global DISPLAYEDSTREAMS2
-  global toggle
-  # Resetting activestreams for each division to find so we can check to make sure they are still live
-  activestreams = {}
-  activestreams2 = {}
-  # Simple toggle / workaround. Works to reduce performance inhibitance and restricts the function to one api at a time
-  if (toggle == 1):
+    global displayed_streams
+    global displayed_streams2
+    global toggle
+
+    activestreams = {}
+    activestreams2 = {}
+  
+    if (toggle == 1):
         streams = requests.get(FACEIT_STREAMINGS_V1 + VARSITY)
         toggle = 0
-  else:
+    else:
         streams = requests.get(FACEIT_STREAMINGS_V1 + JUNIOR_VARSITY)
         toggle = 1
-  streams_data = streams.json()
-  jsonstreams = streams_data
+    streams_data = streams.json()
+    jsonstreams = streams_data
 
-  if (toggle == 1):
-      dispstreams = DISPLAYEDSTREAMS
-  else:
-      dispstreams = DISPLAYEDSTREAMS2
+    if (toggle == 1):
+        dispstreams = displayed_streams
+    else:
+        dispstreams = displayed_streams2
 
-  x = 'payload'
-  count = 0
-  for x in jsonstreams: 
+    count = 0
+    for x in jsonstreams: 
         if isinstance(jsonstreams[x], list): 
             count += len(jsonstreams[x]) 
-  for x in range(count):
+    for x in range(count):
       # Nodes to use for the messages, can be customized with Discord.py spec
-    nick = (jsonstreams["payload"][x]["userNickname"])
-    image = (jsonstreams["payload"][x]["stream"]["channelLogo"])
-    competitionName = (jsonstreams["payload"][x]["competitionName"])
-    channelUrl = (jsonstreams["payload"][x]["stream"]["channelUrl"])
-    if (toggle == 1):
-        activestreams[nick] = nick
-    else:
-        activestreams2[nick] = nick
-    if nick in dispstreams:
-        # No need for another embed if they already have one.
-        continue
-    else:
-        # Creating an embed for the streamer
-        channel = client.get_channel(LEAGUE_STREAMS)
-        embed = Embed(title=nick, url=channelUrl, description=competitionName, color=0x5e7aac)
-        embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
-        embed.set_thumbnail(url=image)
-        activeembed = await channel.send(embed=embed)
-        dispstreams[nick] = activeembed.id
+        nick = (jsonstreams["payload"][x]["userNickname"])
+        image = (jsonstreams["payload"][x]["stream"]["channelLogo"])
+        competitionName = (jsonstreams["payload"][x]["competitionName"])
+        channelUrl = (jsonstreams["payload"][x]["stream"]["channelUrl"])
+        if (toggle == 1):
+            activestreams[nick] = nick
+        else:
+            activestreams2[nick] = nick
+        if nick in dispstreams:
+            continue
+        else:
+            channel = client.get_channel(LEAGUE_STREAMS)
+            embed = Embed(title=nick, url=channelUrl, description=competitionName, color=0x5e7aac)
+            embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
+            embed.set_thumbnail(url=image)
+            activeembed = await channel.send(embed=embed)
+            dispstreams[nick] = activeembed.id
     # From here down is checking to see if our active displayed streamers are still in the api, if not, we will delete their messages.
-  if (toggle == 1):
-      overactive = activestreams
-  else:
-      overactive = activestreams2
-  over = { k : dispstreams[k] for k in set(dispstreams) - set(overactive) }
+    if (toggle == 1):
+        overactive = activestreams
+    else:
+        overactive = activestreams2
+    over = { k : dispstreams[k] for k in set(dispstreams) - set(overactive) }
+    if over:
+        for key in over:
+            channel = client.get_channel(LEAGUE_STREAMS)
+            msg = await channel.fetch_message(dispstreams[key])
+            await msg.delete()
+            del dispstreams[key]
+            over = {}
 
-  if over:
-      for key in over:
-        channel = client.get_channel(LEAGUE_STREAMS)
-        msg = await channel.fetch_message(dispstreams[key])
-        await msg.delete()
-        del dispstreams[key]
-        over = {}
+    if (toggle == 1):
+        await run_get_streams()
 
 """
 -------------------------------------------------------------------------------
@@ -486,12 +491,10 @@ async def on_command_error(context, error):
 
     raise error
 
-# Simple call to async get_streams() every five seconds
 @client.event
 async def on_ready():
-    await get_streams()
-    await asyncio.sleep(5)
-    await on_ready()
+    #Call get_streams() and begin 5 minute timer
+    await get_streams.start()
 
 """
 -------------------------------------------------------------------------------
