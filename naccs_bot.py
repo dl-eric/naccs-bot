@@ -183,8 +183,8 @@ async def get_streams():
         for x in range(count):
             response_nick = (streams_json["payload"][x]["userNickname"])
             response_image = (streams_json["payload"][x]["stream"]["channelLogo"])
-            response_comp_name = (streams_json["payload"][x]["response_comp_name"])
-            response_channel_url = (streams_json["payload"][x]["stream"]["response_channel_url"])
+            response_comp_name = (streams_json["payload"][x]["competitionName"])
+            response_channel_url = (streams_json["payload"][x]["stream"]["channelUrl"])
             active_streams[response_nick] = response_nick
             if response_nick in displayed_streams:
                 continue
