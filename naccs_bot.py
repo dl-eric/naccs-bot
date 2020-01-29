@@ -8,6 +8,9 @@ import json
 import threading
 import requests
 import asyncio
+import sentry_sdk
+
+sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN', ''))
 
 BOT_PREFIX = (".")
 
