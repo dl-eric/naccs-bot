@@ -388,7 +388,6 @@ async def on_message(message):
             await match_finished(message, parsed)
         elif (parsed['event'] == "match_status_cancelled"):
             await match_cancelled(message, parsed)
-        await message.delete(delay=1)
         return
     else:
         # Don't process bot messages
