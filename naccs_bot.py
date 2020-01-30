@@ -175,8 +175,8 @@ async def get_streams():
 
     stream_responses = {0: varsity_data, 1: jv_data}
 
-    for i in stream_responses:
-        streams_json = stream_responses[i]
+    for division in stream_responses:
+        streams_json = stream_responses[division]
         print(streams_json)
 
         count = 0
@@ -188,14 +188,18 @@ async def get_streams():
             response_image = (streams_json["payload"][x]["stream"]["channelLogo"])
             response_comp_name = (streams_json["payload"][x]["competitionName"])
             response_channel_url = (streams_json["payload"][x]["stream"]["channelUrl"])
+            response_competition_name = (streams_json["payload"][x]["factionNickname"])
+            response_viewers = (streams_json["payload"][x]["stream"]["viewers"])
             active_streams[response_nick] = response_nick
             if response_nick in displayed_streams:
                 continue
             else:
                 channel = client.get_channel(LEAGUE_STREAMS)
                 embed = Embed(title=response_nick, url=response_channel_url, description=response_comp_name, color=0x5e7aac)
-                embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
                 embed.set_thumbnail(url=response_image)
+                embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
+                embed.add_field(name="Team", value=response_competition_name, inline=True)
+                embed.add_field(name="Viewers", value=response_viewers, inline=True)
                 embed_active = await channel.send(embed=embed)
                 displayed_streams[response_nick] = embed_active.id
 
