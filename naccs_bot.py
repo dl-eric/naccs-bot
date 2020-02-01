@@ -20,7 +20,7 @@ FACEIT_QUEUE_API   = "https://api.faceit.com/queue/v1/player/"
 FACEIT_STREAMINGS_V1 = "https://api.faceit.com/stream/v1/streamings?limit=20&offset=0&competitionType=championship&competitionId="
 
 # FACEIT Hub IDs
-POWER_PUG_HUB       = "9512ae3b-7322-4821-9eca-6e0db1819b03"
+POWER_PUG_HUB       = "30d483b9-c337-4738-8d4a-b65bf656269d"
 GENERAL_HUB         = "a67c2ead-9968-4e8b-957b-fb8bc244b302"
 
 # FACEIT Division IDs
