@@ -17,7 +17,10 @@ BOT_PREFIX = (".")
 # FACEIT Endpoints
 FACEIT_DATA_V4      = "https://open.faceit.com/data/v4/"
 FACEIT_QUEUE_API   = "https://api.faceit.com/queue/v1/player/"
-FACEIT_STREAMINGS_V1 = "https://api.faceit.com/stream/v1/streamings?limit=20&offset=0&competitionType=championship&competitionId="
+FACEIT_STREAMINGS_V1_ORGANIZER = "https://api.faceit.com/stream/v1/streamings?limit=40&offset=0&organizerId="
+
+# FACEIT Organizer IDs
+NACCS_MAIN          = "80831a09-3b2d-4070-8a1a-3be4d3de2bb5"
 
 # FACEIT Hub IDs
 POWER_PUG_HUB       = "30d483b9-c337-4738-8d4a-b65bf656269d"
@@ -159,7 +162,7 @@ def get_ongoing_matches(channel_id):
     return matches.json()
 
 #
-#   Get ongoing FACEIT streams for both divisions
+#   Get ongoing FACEIT streams for all of NACCS on FACEIT
 #
 # 
 
@@ -168,12 +171,10 @@ async def get_streams():
     global displayed_streams
 
     active_streams = {}
-    response_varsity = requests.get(FACEIT_STREAMINGS_V1 + VARSITY)
-    respone_juniorvaristy = requests.get(FACEIT_STREAMINGS_V1 + JUNIOR_VARSITY)
-    varsity_data = response_varsity.json()
-    jv_data = respone_juniorvaristy.json()
+    response_naccs = requests.get(FACEIT_STREAMINGS_V1_ORGANIZER + NACCS_MAIN)
+    naccs_data = response_naccs.json()
 
-    stream_responses = {0: varsity_data, 1: jv_data}
+    stream_responses = {0: naccs_data} # Scalability, for multiple APIs. (Since we are only using one now)
 
     for division in stream_responses:
         streams_json = stream_responses[division]
@@ -188,20 +189,25 @@ async def get_streams():
             response_image = (streams_json["payload"][x]["stream"]["channelLogo"])
             response_comp_name = (streams_json["payload"][x]["competitionName"])
             response_channel_url = (streams_json["payload"][x]["stream"]["channelUrl"])
-            response_competition_name = (streams_json["payload"][x]["factionNickname"])
+            response_faction_name = (streams_json["payload"][x]["factionNickname"])
             response_viewers = (streams_json["payload"][x]["stream"]["viewers"])
             active_streams[response_nick] = response_nick
+
+            channel = client.get_channel(LEAGUE_STREAMS)
+            embed = Embed(title=response_nick, url=response_channel_url, description=response_comp_name, color=0x5e7aac)
+            embed.set_thumbnail(url=response_image)
+            embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
+            embed.add_field(name="Team", value=response_faction_name, inline=True)
+            embed.add_field(name="Viewers", value=response_viewers, inline=True)
+
             if response_nick in displayed_streams:
+                msg = await channel.fetch_message(displayed_streams[response_nick])
+                await msg.edit(embed=embed)
                 continue
             else:
-                channel = client.get_channel(LEAGUE_STREAMS)
-                embed = Embed(title=response_nick, url=response_channel_url, description=response_comp_name, color=0x5e7aac)
-                embed.set_thumbnail(url=response_image)
-                embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
-                embed.add_field(name="Team", value=response_competition_name, inline=True)
-                embed.add_field(name="Viewers", value=response_viewers, inline=True)
                 embed_active = await channel.send(embed=embed)
                 displayed_streams[response_nick] = embed_active.id
+
 
     #Check to see if streams have ended, if so, remove the messages
     stream_over = { k : displayed_streams[k] for k in set(displayed_streams) - set(active_streams) }
