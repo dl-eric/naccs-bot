@@ -166,6 +166,12 @@ def get_ongoing_matches(channel_id):
 #
 # 
 
+async def preload_streams():
+    channel = client.get_channel(LEAGUE_STREAMS)
+
+    await channel.purge()
+    await channel.send("This channel automatically shows streams from players currently using a NACCS service on FACEIT. I update every 5 minutes.")
+
 @loop(minutes=5)
 async def get_streams():
     global displayed_streams
@@ -178,35 +184,47 @@ async def get_streams():
 
     for division in stream_responses:
         streams_json = stream_responses[division]
-        print(streams_json)
 
         count = 0
         for x in streams_json: 
             if isinstance(streams_json[x], list): 
                 count += len(streams_json[x]) 
         for x in range(count):
-            response_nick = (streams_json["payload"][x]["userNickname"])
-            response_image = (streams_json["payload"][x]["stream"]["channelLogo"])
-            response_comp_name = (streams_json["payload"][x]["competitionName"])
-            response_channel_url = (streams_json["payload"][x]["stream"]["channelUrl"])
-            response_faction_name = (streams_json["payload"][x]["factionNickname"])
-            response_viewers = (streams_json["payload"][x]["stream"]["viewers"])
-            active_streams[response_nick] = response_nick
+            response_passed = True # Getting data ready for tests to verify json integrity
+            # Check the json for missing key.
+            expected_keys = ['payload', x, 'stream', 'viewers']
+            _streams_json = streams_json
+            for item in expected_keys:
+                try:
+                    _streams_json = _streams_json[item]
+                except KeyError:
+                    response_passed = False
 
-            channel = client.get_channel(LEAGUE_STREAMS)
-            embed = Embed(title=response_nick, url=response_channel_url, description=response_comp_name, color=0x5e7aac)
-            embed.set_thumbnail(url=response_image)
-            embed.set_author(name="A League Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
-            embed.add_field(name="Team", value=response_faction_name, inline=True)
-            embed.add_field(name="Viewers", value=response_viewers, inline=True)
-
-            if response_nick in displayed_streams:
-                msg = await channel.fetch_message(displayed_streams[response_nick])
-                await msg.edit(embed=embed)
-                continue
+            if (response_passed == False):
+                print("FACEIT API returned incomplete response.")
             else:
-                embed_active = await channel.send(embed=embed)
-                displayed_streams[response_nick] = embed_active.id
+                response_nick = (streams_json["payload"][x]["userNickname"])
+                response_image = (streams_json["payload"][x]["stream"]["channelLogo"])
+                response_comp_name = (streams_json["payload"][x]["competitionName"])
+                response_channel_url = (streams_json["payload"][x]["stream"]["channelUrl"])
+                response_faction_name = (streams_json["payload"][x]["factionNickname"])
+                response_viewers = (streams_json["payload"][x]["stream"]["viewers"])
+                active_streams[response_nick] = response_nick
+
+                channel = client.get_channel(LEAGUE_STREAMS)
+                embed = Embed(title=response_nick, url=response_channel_url, description=response_comp_name, color=0x5e7aac)
+                embed.set_thumbnail(url=response_image)
+                embed.set_author(name="A NACCS Stream is Live!", icon_url="https://naccs-s3.s3.us-east-2.amazonaws.com/static/assets/headerlogo_small.png")
+                embed.add_field(name="Team", value=response_faction_name, inline=True)
+                embed.add_field(name="Viewers", value=response_viewers, inline=True)
+
+                if response_nick in displayed_streams:
+                    msg = await channel.fetch_message(displayed_streams[response_nick])
+                    await msg.edit(embed=embed)
+                    continue
+                else:
+                    embed_active = await channel.send(embed=embed)
+                    displayed_streams[response_nick] = embed_active.id
 
 
     #Check to see if streams have ended, if so, remove the messages
@@ -483,6 +501,7 @@ async def on_command_error(context, error):
 
 @client.event
 async def on_ready():
+    await preload_streams()
     #Call get_streams() and begin 5 minute timer
     await get_streams.start()
 
