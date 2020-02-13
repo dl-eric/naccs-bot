@@ -63,6 +63,9 @@ DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_DB       = os.environ.get('DB_DB')
 DB_USER     = os.environ.get('DB_USER')
 
+# Purge the stream channel if the bot is just booting up
+should_preload = True
+
 def db_connect():
     db = pymysql.connect(host=DB_HOST, user=DB_USER, 
                             password=DB_PASSWORD, db=DB_DB, charset='utf8mb4', 
@@ -165,7 +168,6 @@ def get_ongoing_matches(channel_id):
 #   Get ongoing FACEIT streams for all of NACCS on FACEIT
 #
 # 
-
 async def preload_streams():
     channel = client.get_channel(LEAGUE_STREAMS)
 
@@ -401,7 +403,7 @@ async def verify(context):
         # Change nickname
         # TODO
 
-        await author.send("You're verified! I've assigned you the Member role and the Ping role. The Ping role will subscribes you to a ping for when the Collegiate Hub gets active. If you don't want it, head over to #pingtoggle and type '.noping'. Also be sure to change your nickname with your college tag. GLHF!")
+        await author.send("You're verified! I've assigned you the Member role and the Ping role. The Ping role subscribes you to a ping for when the Collegiate Hub gets active. If you don't want it, head over to #pingtoggle and type '.noping'. Also be sure to change your nickname with your college tag. GLHF!")
     else:
         await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! A common issue people encounter is that the Discord account they link is not the Discord account that's logged into their client. Make sure the Discord account you link is EXACTLY the one you're using right now! If you're sure that you have everything in order, contact NACCS staff.")
 
@@ -507,9 +509,19 @@ async def on_command_error(context, error):
 
 @client.event
 async def on_ready():
-    await preload_streams()
-    #Call get_streams() and begin 5 minute timer
+    global should_preload
+    if should_preload:
+        await preload_streams()
+        should_preload = False
+        
+    # Call get_streams() and begin 5 minute timer
+    print("Bot ready. Starting stream task...")
     await get_streams.start()
+
+@client.event
+async def on_disconnect():
+    print("Bot disconnected. Stopping stream task...")
+    await get_streams.stop()
 
 """
 -------------------------------------------------------------------------------
