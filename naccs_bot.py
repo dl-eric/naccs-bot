@@ -262,6 +262,13 @@ def get_category(guild, category_id):
 async def match_ready(message, parsed):
     print("Match ready")
     guild = message.guild
+    match_id = parsed.get('match_id')
+
+    if match_id in channels:
+        # For some reason the webhook was reporting duplicate matches so this is here
+        # to protect against that
+        print("Match with ID", match_id, "already handled!")
+        return
 
     if parsed.get("hub") == "NACCS Collegiate Queue":
         category = get_category(guild, GENERAL_CATEGORY)
@@ -270,7 +277,6 @@ async def match_ready(message, parsed):
     else:
         return
 
-    match_id = parsed.get('match_id')
     channel_list = []
     for team in parsed.get('teams'):
         channel = await guild.create_voice_channel(team.get('team_name'), category=category, user_limit=5)
