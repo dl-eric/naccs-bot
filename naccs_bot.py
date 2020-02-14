@@ -385,6 +385,11 @@ async def match_cancelled(message, parsed):
                 brief="Turn on Power Pugs Queue Window",
                 pass_context=True)
 async def open_powerpugs_window(context):
+    if powerpugs_timer.get_task():
+        # Already running
+        await context.channel.send('Power Pugs already opened!')
+        return
+
     for role in context.message.author.roles:
         if role.name == 'Tech Crew':
             schedule.every().day.at("17:00").do(open_powerpugs)
@@ -406,6 +411,11 @@ async def open_powerpugs_window(context):
                 brief="Turn off Power Pugs Queue Window",
                 pass_context=True)
 async def close_powerpugs_window(context):
+    if powerpugs_timer.get_task():
+        # Already running
+        await context.channel.send('Power Pugs already closed!')
+        return
+
     for role in context.message.author.roles:
         if role.name == 'Tech Crew':
             schedule.clear()
