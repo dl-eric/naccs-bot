@@ -9,6 +9,7 @@ import threading
 import requests
 import asyncio
 import sentry_sdk
+import schedule
 
 sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN', ''))
 
@@ -173,6 +174,26 @@ async def preload_streams():
 
     await channel.purge()
     await channel.send("This channel automatically shows streams from players currently using a NACCS service on FACEIT. I update every 5 minutes.")
+
+#
+#   Open the Power Pugs queue
+#
+async def open_powerpugs():
+    print("Opening Powerpugs")
+    pass
+
+
+#
+#   Close the Power Pugs queue
+#
+async def close_powerpugs():
+    print("Closing Powerpugs")
+    pass
+
+@loop(seconds=1)
+async def powerpugs_timer():
+    schedule.run_pending()
+
 
 @loop(minutes=5)
 async def get_streams():
@@ -359,6 +380,41 @@ async def match_cancelled(message, parsed):
     Discord client commands
 -------------------------------------------------------------------------------
 """
+@client.command(name='openwindow',
+                description="Turn on Power Pugs Queue Window",
+                brief="Turn on Power Pugs Queue Window",
+                pass_context=True)
+async def open_powerpugs_window(context):
+    for role in context.message.author.roles:
+        if role.name == 'Tech Crew':
+            schedule.every().day.at("17:00").do(open_powerpugs)
+            schedule.every().monday.at("22:00").do(close_powerpugs)
+            schedule.every().tuesday.at("22:00").do(close_powerpugs)
+            schedule.every().wednesday.at("22:00").do(close_powerpugs)
+            schedule.every().thursday.at("22:00").do(close_powerpugs)
+            schedule.every().friday.at("23:59").do(close_powerpugs)
+            schedule.every().saturday.at("23:59").do(close_powerpugs)
+            schedule.every().sunday.at("23:59").do(close_powerpugs)
+            powerpugs_timer.start()
+
+            context.channel.send('Opened Power Pugs Window!')
+            return
+
+
+@client.command(name='closewindow',
+                description="Turn off Power Pugs Queue Window",
+                brief="Turn off Power Pugs Queue Window",
+                pass_context=True)
+async def close_powerpugs_window(context):
+    for role in context.message.author.roles:
+        if role.name == 'Tech Crew':
+            schedule.clear()
+            powerpugs_timer.stop()
+
+            context.channel.send('Closed Power Pugs Window!')
+            return
+
+
 @client.command(name='pingme',
                 description="Get the Ping role so you can be notified for Collegiate Hub queues",
                 brief="Get the Ping role",
@@ -510,13 +566,13 @@ async def on_command_error(context, error):
 @client.event
 async def on_ready():
     global should_preload
-    if should_preload:
-        await preload_streams()
-        should_preload = False
+    # if should_preload:
+    #     await preload_streams()
+    #     should_preload = False
         
-    # Call get_streams() and begin 5 minute timer
-    print("Bot ready. Starting stream task...")
-    await get_streams.start()
+    # # Call get_streams() and begin 5 minute timer
+    # print("Bot ready. Starting stream task...")
+    # await get_streams.start()
 
 @client.event
 async def on_disconnect():

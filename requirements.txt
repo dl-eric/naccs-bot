@@ -9,6 +9,7 @@ idna-ssl==1.1.0
 multidict==4.5.2
 PyMySQL==0.9.3
 requests==2.22.0
+schedule==0.6.0
 sentry-sdk==0.14.1
 typing-extensions==3.7.4.1
 urllib3==1.25.8
