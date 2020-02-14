@@ -397,7 +397,7 @@ async def open_powerpugs_window(context):
             schedule.every().sunday.at("23:59").do(close_powerpugs)
             powerpugs_timer.start()
 
-            context.channel.send('Opened Power Pugs Window!')
+            await context.channel.send('Opened Power Pugs Window!')
             return
 
 
@@ -411,7 +411,7 @@ async def close_powerpugs_window(context):
             schedule.clear()
             powerpugs_timer.stop()
 
-            context.channel.send('Closed Power Pugs Window!')
+            await context.channel.send('Closed Power Pugs Window!')
             return
 
 
