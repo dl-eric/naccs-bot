@@ -411,7 +411,7 @@ async def open_powerpugs_window(context):
                 brief="Turn off Power Pugs Queue Window",
                 pass_context=True)
 async def close_powerpugs_window(context):
-    if powerpugs_timer.get_task():
+    if powerpugs_timer.get_task() == None:
         # Already running
         await context.channel.send('Power Pugs already closed!')
         return
