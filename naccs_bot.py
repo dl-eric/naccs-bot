@@ -566,13 +566,13 @@ async def on_command_error(context, error):
 @client.event
 async def on_ready():
     global should_preload
-    # if should_preload:
-    #     await preload_streams()
-    #     should_preload = False
+    if should_preload:
+        await preload_streams()
+        should_preload = False
         
-    # # Call get_streams() and begin 5 minute timer
-    # print("Bot ready. Starting stream task...")
-    # await get_streams.start()
+    # Call get_streams() and begin 5 minute timer
+    print("Bot ready. Starting stream task...")
+    await get_streams.start()
 
 @client.event
 async def on_disconnect():
