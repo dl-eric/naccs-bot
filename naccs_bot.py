@@ -67,6 +67,10 @@ DB_USER     = os.environ.get('DB_USER')
 # Purge the stream channel if the bot is just booting up
 should_preload = True
 
+# Power Pug open status
+window_open = True
+
+
 def db_connect():
     db = pymysql.connect(host=DB_HOST, user=DB_USER, 
                             password=DB_PASSWORD, db=DB_DB, charset='utf8mb4', 
@@ -385,7 +389,7 @@ async def match_cancelled(message, parsed):
                 brief="Turn on Power Pugs Queue Window",
                 pass_context=True)
 async def open_powerpugs_window(context):
-    if powerpugs_timer.get_task():
+    if window_open:
         # Already running
         await context.channel.send('Power Pugs already opened!')
         return
@@ -401,6 +405,7 @@ async def open_powerpugs_window(context):
             schedule.every().saturday.at("23:59").do(close_powerpugs)
             schedule.every().sunday.at("23:59").do(close_powerpugs)
             powerpugs_timer.start()
+            global window_open = True
 
             await context.channel.send('Opened Power Pugs Window!')
             return
@@ -411,8 +416,8 @@ async def open_powerpugs_window(context):
                 brief="Turn off Power Pugs Queue Window",
                 pass_context=True)
 async def close_powerpugs_window(context):
-    if powerpugs_timer.get_task() == None:
-        # Already running
+    if not window_open:
+        # Already closed
         await context.channel.send('Power Pugs already closed!')
         return
 
@@ -420,6 +425,7 @@ async def close_powerpugs_window(context):
         if role.name == 'Tech Crew':
             schedule.clear()
             powerpugs_timer.stop()
+            global window_open = False
 
             await context.channel.send('Closed Power Pugs Window!')
             return
