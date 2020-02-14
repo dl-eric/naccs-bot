@@ -389,6 +389,7 @@ async def match_cancelled(message, parsed):
                 brief="Turn on Power Pugs Queue Window",
                 pass_context=True)
 async def open_powerpugs_window(context):
+    global window_open
     if window_open:
         # Already running
         await context.channel.send('Power Pugs already opened!')
@@ -405,7 +406,7 @@ async def open_powerpugs_window(context):
             schedule.every().saturday.at("23:59").do(close_powerpugs)
             schedule.every().sunday.at("23:59").do(close_powerpugs)
             powerpugs_timer.start()
-            global window_open = True
+            window_open = True
 
             await context.channel.send('Opened Power Pugs Window!')
             return
@@ -416,6 +417,7 @@ async def open_powerpugs_window(context):
                 brief="Turn off Power Pugs Queue Window",
                 pass_context=True)
 async def close_powerpugs_window(context):
+    global window_open
     if not window_open:
         # Already closed
         await context.channel.send('Power Pugs already closed!')
@@ -425,7 +427,7 @@ async def close_powerpugs_window(context):
         if role.name == 'Tech Crew':
             schedule.clear()
             powerpugs_timer.stop()
-            global window_open = False
+            window_open = False
 
             await context.channel.send('Closed Power Pugs Window!')
             return
