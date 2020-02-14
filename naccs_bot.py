@@ -68,7 +68,7 @@ DB_USER     = os.environ.get('DB_USER')
 should_preload = True
 
 # Power Pug open status
-window_open = True
+window_open = False
 
 
 def db_connect():
@@ -182,7 +182,7 @@ async def preload_streams():
 #
 #   Open the Power Pugs queue
 #
-async def open_powerpugs():
+def open_powerpugs():
     print("Opening Powerpugs")
     pass
 
@@ -190,7 +190,7 @@ async def open_powerpugs():
 #
 #   Close the Power Pugs queue
 #
-async def close_powerpugs():
+def close_powerpugs():
     print("Closing Powerpugs")
     pass
 
