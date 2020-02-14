@@ -384,11 +384,11 @@ async def match_cancelled(message, parsed):
     Discord client commands
 -------------------------------------------------------------------------------
 """
-@client.command(name='openwindow',
+@client.command(name='autowindowon',
                 description="Turn on Power Pugs Queue Window",
                 brief="Turn on Power Pugs Queue Window",
                 pass_context=True)
-async def open_powerpugs_window(context):
+async def start_autowindow(context):
     global window_open
     if window_open:
         # Already running
@@ -412,11 +412,11 @@ async def open_powerpugs_window(context):
             return
 
 
-@client.command(name='closewindow',
+@client.command(name='autowindowoff',
                 description="Turn off Power Pugs Queue Window",
                 brief="Turn off Power Pugs Queue Window",
                 pass_context=True)
-async def close_powerpugs_window(context):
+async def close_autowindow(context):
     global window_open
     if not window_open:
         # Already closed
