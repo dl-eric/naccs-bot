@@ -89,13 +89,14 @@ def is_verified(discord_name):
     db = db_connect()
     try:
         with db.cursor() as cursor:
-            sql = "select verified_student, faceit, discord from users_profile where discord=%s"
+            sql = "select verified_student, faceit, discord, college from users_profile where discord=%s"
             cursor.execute(sql, (str(discord_name),))
             result = cursor.fetchone()
             verified_student = result.get('verified_student')
             faceit = result.get('faceit')
             discord = result.get('discord')
-            print(verified_student, faceit, discord)
+            is_verified.university = result.get('college')
+            print(verified_student, faceit, discord, is_verified.university)
             
             if (verified_student and faceit and discord):
                 return True
@@ -104,6 +105,27 @@ def is_verified(discord_name):
     except Exception as e:
         print("Unable to SQL for", discord_name, e)
         return False
+
+#
+#   Build university tag for user nickname.
+#
+async def create_uni_tag(author, university):
+    db = db_connect()
+    try:
+        with db.cursor() as cursor:
+            sql = "SELECT abbreviation FROM league_school WHERE name =%s;"
+            cursor.execute(sql, (str(university),))
+            result = cursor.fetchone()
+            tag = result.get('abbreviation')
+            await author.send("I added your college tag to your server nickname. Feel free to change it if I made a mistake.")
+    except Exception as e:
+        print("SQL failed, falling back to generation", university, e)
+        tag_words = university.split()
+        tag_letters = [word[0] for word in tag_words]
+        tag = "".join(tag_letters)
+        await author.send("I added your college tag to your server nickname. Unfortunately we don't have one stored for your school so I tried my best to generate it. Feel free to change it if I made a mistake.")
+    
+    await author.edit(nick="[{}] {}".format(tag, author.name))
 
 #
 #   Query discord username from faceit username
@@ -474,10 +496,14 @@ async def verify(context):
         ping_role = get(context.guild.roles, name="Ping")
         await author.add_roles(member_role, ping_role)
         
-        # Change nickname
-        # TODO
+        #Create college tag
+        university = is_verified.university
+        if (university != ""):
+            await create_uni_tag(author, university)
+        else:
+            await author.send("Unable to generate college tag. Contact a NACCS Tech. For now, add your college tag to your server nickname.")
 
-        await author.send("You're verified! I've assigned you the Member role and the Ping role. The Ping role subscribes you to a ping for when the Collegiate Hub gets active. If you don't want it, head over to #pingtoggle and type '.noping'. Also be sure to change your nickname with your college tag. GLHF!")
+        await author.send("You're verified! I've assigned you the Member role and the Ping role. The Ping role subscribes you to a ping for when the Collegiate Hub gets active. If you don't want it, head over to #pingtoggle and type '.noping'. GLHF!")
     else:
         await author.send("I couldn't verify you. Make sure that you have verified college credentials and that both your FACEIT and Discord accounts are linked! A common issue people encounter is that the Discord account they link is not the Discord account that's logged into their client. Make sure the Discord account you link is EXACTLY the one you're using right now! If you're sure that you have everything in order, contact NACCS staff.")
 
