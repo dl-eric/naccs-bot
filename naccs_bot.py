@@ -126,6 +126,21 @@ def get_discord_from_faceit(faceit):
 -------------------------------------------------------------------------------
 """
 #
+#   Open or close Power Pugs
+#
+def powerpugs_open(should_open):
+    endpoint = "https://api.faceit.com/queue/v1/queue/5e33533649222000078eb060"
+    payload = { "open": should_open }
+
+    headers = {'Authorization': 'Bearer ' + str(FACEIT_BOT_KEY), 'Content-Type': 'application/json' }
+    response = requests.put(endpoint, json=payload, headers=headers)
+
+    if (response.status_code != 200):
+        print("Failed to change powerpugs open/close")
+        print(response.content)
+
+
+#
 #   Returns number of people in queue for specified channel
 #
 def get_queue_size(channel_id):
@@ -184,7 +199,7 @@ async def preload_streams():
 #
 def open_powerpugs():
     print("Opening Powerpugs")
-    pass
+    powerpugs_open(True)
 
 
 #
@@ -192,7 +207,7 @@ def open_powerpugs():
 #
 def close_powerpugs():
     print("Closing Powerpugs")
-    pass
+    powerpugs_open(False)
 
 @loop(seconds=1)
 async def powerpugs_timer():
@@ -300,6 +315,7 @@ async def match_ready(message, parsed):
     if parsed.get("hub") == "NACCS Collegiate Queue":
         category = get_category(guild, GENERAL_CATEGORY)
     elif parsed.get("hub") == "NACCS Power Pugs":
+        return
         category = get_category(guild, POWER_PUG_CATEGORY)
     else:
         return
@@ -595,7 +611,7 @@ async def on_ready():
 @client.event
 async def on_disconnect():
     print("Bot disconnected. Stopping stream task...")
-    await get_streams.stop()
+    get_streams.stop()
 
 """
 -------------------------------------------------------------------------------
